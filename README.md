@@ -6,6 +6,7 @@ A collection of reusable Hermes Agent skills maintained by The Aetheris collecti
 
 | Skill | Description |
 |-------|-------------|
+| [`fomoid-summarizer`](./fomoid-summarizer/) | Summarize Fomo.id threads — fetch thread + comments via API, normalize, and summarize |
 | [`hermes-session-model`](./hermes-session-model/) | Query the actual model & provider in a running Hermes session |
 
 ## Installation

@@ -19,3 +19,7 @@ venv/
 *~
 .vscode/
 .idea/
+
+# Credential files — never commit API keys or tokens
+config.js
+**/config.js
