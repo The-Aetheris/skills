@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""
+Hermes Session Model — Find the actual model & provider running in a Hermes session.
+
+How it works:
+1. Scan running processes to find the Hermes dashboard port (--port argument)
+2. Query GET /api/model/info on the dashboard
+3. Return JSON or human-readable output
+
+Output modes:
+  --json   → full JSON (default when stdout is not a TTY)
+  (none)   → human-readable table
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.request
+import urllib.error
+
+
+def find_dashboard_port():
+    """Scan running processes for the Hermes dashboard --port argument."""
+    try:
+        result = subprocess.run(
+            ["ps", "aux"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        for line in result.stdout.splitlines():
+            m = re.search(r'hermes.*dashboard.*--port\s+(\d+)', line, re.IGNORECASE)
+            if m:
+                return int(m.group(1))
+
+        # Fallback: check env vars
+        for env_key in ["HERMES_DASHBOARD_PORT", "DASHBOARD_PORT"]:
+            val = os.environ.get(env_key)
+            if val and val.isdigit():
+                return int(val)
+
+        return None
+    except subprocess.TimeoutExpired:
+        return None
+
+
+def get_model_info(port, timeout=5):
+    """Query the Hermes dashboard /api/model/info endpoint."""
+    url = f"http://127.0.0.1:{port}/api/model/info"
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError) as e:
+        return {"error": str(e)}
+
+
+def format_human(info):
+    """Format model info as human-readable text."""
+    if "error" in info:
+        return f"Error: {info['error']}"
+
+    model = info.get("model", "?")
+    provider = info.get("provider", "?")
+    ctx = info.get("effective_context_length", info.get("auto_context_length", "?"))
+    caps = info.get("capabilities", {})
+
+    lines = [
+        f"Model       : {model}",
+        f"Provider    : {provider}",
+        f"Context     : {ctx:,} tokens" if isinstance(ctx, int) else f"Context     : {ctx}",
+    ]
+
+    if caps:
+        max_tokens = caps.get("max_output_tokens", 0)
+        if max_tokens:
+            lines.append(f"Max output  : {max_tokens:,} tokens" if isinstance(max_tokens, int) else f"Max output  : {max_tokens}")
+
+        fam = caps.get("model_family", "")
+        if fam:
+            lines.append(f"Family      : {fam}")
+
+        tools = caps.get("supports_tools", False)
+        vision = caps.get("supports_vision", False)
+        reasoning = caps.get("supports_reasoning", False)
+        lines.append(f"Tools       : {'yes' if tools else 'no'}")
+        lines.append(f"Vision      : {'yes' if vision else 'no'}")
+        lines.append(f"Reasoning   : {'yes' if reasoning else 'no'}")
+
+    return "\n".join(lines)
+
+
+def main():
+    want_json = "--json" in sys.argv or not sys.stdout.isatty()
+
+    port = find_dashboard_port()
+    if not port:
+        msg = json.dumps({
+            "error": "Dashboard process not found",
+            "hint": "Make sure Hermes Desktop or dashboard is running"
+        }) if want_json else "Error: Dashboard process not found.\nMake sure Hermes Desktop / dashboard is running."
+        print(msg)
+        sys.exit(1)
+
+    info = get_model_info(port)
+
+    if want_json:
+        print(json.dumps(info, indent=2))
+    else:
+        print(format_human(info))
+        if "detail" in info and info.get("detail") == "Unauthorized":
+            print(f"\nNote: Dashboard returned 401. Try accessing directly:")
+            print(f"   curl http://127.0.0.1:{port}/api/model/info")
+
+
+if __name__ == "__main__":
+    main()
