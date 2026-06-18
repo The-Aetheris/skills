@@ -17,9 +17,12 @@ venv/
 *.swp
 *.swo
 *~
-.vscode/
 .idea/
 
 # Credential files — never commit API keys or tokens
 config.js
 **/config.js
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore

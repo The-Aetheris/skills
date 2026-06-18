@@ -6,6 +6,7 @@ A collection of reusable Hermes Agent skills maintained by The Aetheris collecti
 
 | Skill | Description |
 |-------|-------------|
+| [`cross-profile-delegation`](./cross-profile-delegation/) | Delegate tasks to another Hermes Agent profile via CLI — Level 1 (send), Level 2 (orchestrated), Level 3 (autonomous) |
 | [`fomoid-summarizer`](./fomoid-summarizer/) | Summarize Fomo.id threads — fetch thread + comments via API, normalize, and summarize |
 | [`hermes-session-model`](./hermes-session-model/) | Query the actual model & provider in a running Hermes session |
 
